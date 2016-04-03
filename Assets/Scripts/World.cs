@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class World : MonoBehaviour
 {
@@ -17,6 +19,8 @@ public class World : MonoBehaviour
     private Snake m_snakeInstance;
     private GameObject priceInstance;
 
+    public GameObject m_canvas;
+    public Text m_text;
 
     // Use this for initialization
     void Start()
@@ -112,7 +116,11 @@ public class World : MonoBehaviour
         m_snakeInstance = go.GetComponent<Snake>();
         m_snakeInstance.worldSize = m_size;
         m_snakeInstance.m_event += instantiatePrice;
+        m_snakeInstance.m_gameOver += showPuntuaction;
         m_snakeInstance.init();
+
+        IA m_ia = go.GetComponent<IA>();
+        m_ia.m_size = m_size;
     }
 
     public void instantiatePrice()
@@ -140,9 +148,9 @@ public class World : MonoBehaviour
         }
 
 
-        priceInstance.transform.position = new Vector3(posX, posY, 0);
-
+        priceInstance.transform.position = new Vector3(posX, posY, 1);
         m_snakeInstance.pricePosition = priceInstance.transform.position;
+
 
     }
 
@@ -150,4 +158,17 @@ public class World : MonoBehaviour
     {
         instantiatePrice();
     }
+
+    private void showPuntuaction(int puntuaction)
+    {
+        string message = "Total puntuaction => " + puntuaction + "\n From a maximun puntuaction of => " + ((m_size - 1) * (m_size - 1)).ToString();
+        m_text.text = message;
+        m_canvas.SetActive(true);
+    }
+
+    public void restartLevel()
+    {
+        SceneManager.LoadScene("game");
+    }
+
 }

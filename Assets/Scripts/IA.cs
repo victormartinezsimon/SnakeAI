@@ -1,15 +1,305 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class IA : MonoBehaviour {
 
-	// Use this for initialization
-	void Start () {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+    public int m_size;
+    public Snake m_snake;
+
+    public float weightObjective;
+    public float weightFutureDead;
+
+    public Snake.Destinies getMovement()
+    {
+        float[] puntuaction = new float[4];//NORTH, WEST, SOUTH, EAST
+        puntuaction = closeToObjective(puntuaction, weightObjective);//if we do this movement, we are more close to the objective
+        puntuaction = futureDead(puntuaction, weightFutureDead);
+
+        puntuaction = closeToAutoEat(puntuaction);
+        puntuaction = closeToDeadByWall(puntuaction);
+        puntuaction = removeBadMovement(puntuaction);//remove imposible movements
+
+        return calculateDestiny(puntuaction);
+    }
+
+    private float[] removeBadMovement(float[] puntuaction)
+    {
+        switch (m_snake.m_actualDestiny)
+        {
+            case Snake.Destinies.NORTH: puntuaction[2] = 0; break;
+            case Snake.Destinies.SOUTH: puntuaction[0] = 0; break;
+            case Snake.Destinies.EAST: puntuaction[3] = 0; break;
+            case Snake.Destinies.WEST: puntuaction[1] = 0; break;
+        }
+        return puntuaction;
+    }
+    private float[] closeToObjective(float[] puntuaction, float weight)
+    {
+        Vector3 objective = m_snake.pricePosition;
+        Vector3 size = m_snake.getSize();
+        Vector3 head = m_snake.getBody()[0].transform.position;
+        
+        Vector3 north = head + new Vector3(0, 1, 0) * size.y;
+        Vector3 east = head + new Vector3(1, 0, 0) * size.x;
+        Vector3 south = head + new Vector3(0, -1, 0) * size.y;
+        Vector3 west = head + new Vector3(-1, 0, 0) * size.x;
+
+        float northDistance = (objective - north).magnitude;
+        float southDistance = (objective - south).magnitude;
+        float eastDistance = (objective - east).magnitude;
+        float westDistance = (objective - west).magnitude;
+
+        float max = Mathf.Max(Mathf.Max(northDistance, southDistance), Mathf.Max(eastDistance, westDistance));
+
+        puntuaction[0] += (max - northDistance) * weight;
+        puntuaction[1] += (max - eastDistance) * weight;
+        puntuaction[2] += (max - southDistance) * weight;
+        puntuaction[3] += (max - westDistance) * weight;
+
+        return puntuaction;
+    }
+    private float[] closeToDeadByWall(float[] puntuaction)
+    {
+        Vector3 size = m_snake.getSize();
+        Vector3 head = m_snake.getBody()[0].transform.position;
+
+        Vector3 north = head + new Vector3(0, 1, 0) * size.y;
+        Vector3 east = head + new Vector3(1, 0, 0) * size.x;
+        Vector3 south = head + new Vector3(0, -1, 0) * size.y;
+        Vector3 west = head + new Vector3(-1, 0, 0) * size.x;
+
+
+        if(isBorder(north))
+        {
+            puntuaction[0] = 0;
+        }
+        if (isBorder(east))
+        {
+            puntuaction[1] = 0;
+        }
+        if (isBorder(south))
+        {
+            puntuaction[2] = 0;
+        }
+        if (isBorder(west))
+        {
+            puntuaction[3] = 0;
+        }
+
+        return puntuaction;
+    }
+    private float[] closeToAutoEat(float[] puntuaction)
+    {
+        Vector3 size = m_snake.getSize();
+        Vector3 head = m_snake.getBody()[0].transform.position;
+
+        Vector3 north = head + new Vector3(0, 1, 0) * size.y;
+        Vector3 east = head + new Vector3(1, 0, 0) * size.x;
+        Vector3 south = head + new Vector3(0, -1, 0) * size.y;
+        Vector3 west = head + new Vector3(-1, 0, 0) * size.x;
+
+        List<GameObject> list = m_snake.getBody();
+        for(int i = 0; i < list.Count; i++)
+        {
+            if(m_snake.samePosition(north, list[i].transform.position))
+            {
+                puntuaction[0] = 0;
+            }
+            if (m_snake.samePosition(east, list[i].transform.position))
+            {
+                puntuaction[1] = 0;
+            }
+            if (m_snake.samePosition(south, list[i].transform.position))
+            {
+                puntuaction[2] = 0;
+            }
+            if (m_snake.samePosition(west, list[i].transform.position))
+            {
+                puntuaction[3] = 0;
+            }
+        }
+
+
+        return puntuaction;
+    }
+    private float[] futureDead(float[] puntuaction, float weight)
+    {
+        Vector3 size = m_snake.getSize();
+        Vector3 head = m_snake.getBody()[0].transform.position;
+
+        Vector3 north = head + new Vector3(0, 1, 0) * size.y;
+        Vector3 east = head + new Vector3(1, 0, 0) * size.x;
+        Vector3 south = head + new Vector3(0, -1, 0) * size.y;
+        Vector3 west = head + new Vector3(-1, 0, 0) * size.x;
+
+        List<Vector3> body = new List<Vector3>();
+        List<GameObject> listGo = m_snake.getBody();
+
+        for(int i = 0; i < listGo.Count - 1; i++)
+        {
+            body.Add(listGo[i].transform.position);
+        }
+
+        int puntNorth = getArea(north, body, size);
+        int puntSouth = getArea(south, body, size);
+        int puntEast = getArea(east, body, size);
+        int puntWest = getArea(west, body, size);
+
+        puntuaction[0] += puntNorth * weight;
+        puntuaction[1] += puntEast * weight;
+        puntuaction[2] += puntSouth * weight;
+        puntuaction[3] += puntWest * weight;
+
+        return puntuaction;
+    }
+    private int getArea(Vector3 origin, List<Vector3> body, Vector3 size)
+    {
+        List<Vector3> listAnalyzed = new List<Vector3>();
+        List<Vector3> listToAnalyze = new List<Vector3>() { origin };
+
+        Vector3 bottomLeft = Vector3.zero;
+        Vector3 topRight = new Vector3(size.x * m_size, size.y * m_size, 0);
+        // take care for borders
+        while (listToAnalyze.Count != 0)
+        {
+            Vector3 actual = listToAnalyze[0];
+            listToAnalyze.RemoveAt(0);
+            listAnalyzed.Add(actual);
+
+            if (!isBorder(actual) && !body.Contains(actual))
+            {
+                //calculate the next values
+                Vector3 north = actual + new Vector3(0, 1, 0) * size.y;
+                Vector3 east = actual + new Vector3(1, 0, 0) * size.x;
+                Vector3 south = actual + new Vector3(0, -1, 0) * size.y;
+                Vector3 west = actual + new Vector3(-1, 0, 0) * size.x;
+
+                //north
+                if (north.y < topRight.y && !listAnalyzed.Contains(north) && !listToAnalyze.Contains(north) && !body.Contains(north) && !isBorder(north))
+                {
+                    listToAnalyze.Add(north);
+                }
+                //south
+                if (south.y > bottomLeft.y && !listAnalyzed.Contains(south) && !listToAnalyze.Contains(south) && !body.Contains(south) && !isBorder(south))
+                {
+                    listToAnalyze.Add(south);
+                }
+                //east
+                if (east.x < topRight.x && !listAnalyzed.Contains(east) && !listToAnalyze.Contains(east) && !body.Contains(east) && !isBorder(east))
+                {
+                    listToAnalyze.Add(east);
+                }
+                //west
+                if (west.x > bottomLeft.x && !listAnalyzed.Contains(west) && !listToAnalyze.Contains(west) && !body.Contains(west) && !isBorder(west))
+                {
+                    listToAnalyze.Add(west);
+                }
+            }
+           
+        }
+        
+        return listAnalyzed.Count - 1;//we add the first one, so we delete it
+    }
+
+    private bool isBorder(Vector3 pos)
+    {
+        Vector3 size = m_snake.getSize();
+        Vector3 bottomLeft = Vector3.zero;
+        Vector3 topRight = new Vector3(size.x * (m_size - 1), size.y * (m_size - 1), 0);
+
+        if (pos.y == topRight.y)
+        {
+            return true;
+        }
+        if (pos.x == topRight.x)
+        {
+            return true;
+        }
+        if (pos.y == bottomLeft.y)
+        {
+            return true;
+        }
+        if (pos.x == bottomLeft.x)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private Snake.Destinies calculateDestinyRoulette(float[] puntuaction)
+    {
+        float acum = 0;
+        for(int i = 0; i < puntuaction.Length; i++)
+        {
+            acum += puntuaction[i];
+        }
+
+        float random = Random.Range(0, acum);
+        acum = -1;
+        int selected = 0;
+        for (int i = 0; i < puntuaction.Length; i++)
+        {
+            if(puntuaction[i] != 0)
+            {
+                float nextAcum = acum + puntuaction[i];
+                if(nextAcum > random)
+                {
+                    selected = i;
+                    break;
+                }
+                acum = nextAcum;
+            }
+        }
+
+        switch (selected)
+        {
+            case 0: return Snake.Destinies.NORTH;
+            case 1: return Snake.Destinies.EAST;
+            case 2: return Snake.Destinies.SOUTH;
+            case 3: return Snake.Destinies.WEST;
+        }
+
+        return m_snake.m_actualDestiny;
+    }
+    private Snake.Destinies calculateDestiny(float[] puntuaction)
+    {
+        int selected = 0;
+        float max = puntuaction[0];
+
+        for(int i = 1; i < puntuaction.Length; i++)
+        {
+            float val = puntuaction[i];
+            if(val > max)
+            {
+                selected = i;
+                max = val;
+            }
+            /*
+            else
+            {
+                if(val == max)
+                {
+                    if(Random.value < 0.5f  )
+                    {
+                        selected = i;
+                        max = val;
+                    }
+                }
+            }
+            */
+        }
+
+        switch (selected)
+        {
+            case 0: return Snake.Destinies.NORTH;
+            case 1: return Snake.Destinies.EAST;
+            case 2: return Snake.Destinies.SOUTH;
+            case 3: return Snake.Destinies.WEST;
+        }
+
+        return m_snake.m_actualDestiny;
+
+    }
 }
