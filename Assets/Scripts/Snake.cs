@@ -16,8 +16,6 @@ public class Snake : MonoBehaviour {
 
     private IA m_ia;
 
-    public float timeWait = 1f;
-
     int puntuacion = 0;
 
     #region callback to create another price
@@ -46,7 +44,11 @@ public class Snake : MonoBehaviour {
         increaseBody(posX, posY, cube);
 
         m_ia = GetComponent<IA>();
-        StartCoroutine(AutoTick());
+    }
+
+    void Update()
+    {
+        Tick();
     }
     
     public void Tick()
@@ -160,36 +162,4 @@ public class Snake : MonoBehaviour {
     {
         return m_body[0].GetComponent<Renderer>().bounds.size; 
     }
-
-    private IEnumerator AutoTick() {
-        while(!dead)
-        {
-            Tick();
-            yield return new WaitForSeconds(timeWait);
-        }
-    }
-
-
-    /*
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            if(automatic)
-            {
-                StartCoroutine(AutoTick());
-            }
-            else
-            {
-                Tick();
-            }
-        }
-
-        if(Input.GetKey(KeyCode.S)&& !automatic)
-        {
-            Tick();
-        }
-
-    }
-    */
 }

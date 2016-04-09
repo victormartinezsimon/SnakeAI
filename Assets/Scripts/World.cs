@@ -19,8 +19,10 @@ public class World : MonoBehaviour
     private Snake m_snakeInstance;
     private GameObject priceInstance;
 
-    public GameObject m_canvas;
     public Text m_text;
+
+    public bool autoStart;
+    public float restartWait;
 
     // Use this for initialization
     void Start()
@@ -33,9 +35,18 @@ public class World : MonoBehaviour
         instantiatePrice();
     }
 
+    void Update()
+    {
+        m_text.text = Stats.getInstance().getText();
+
+    }
+
     private void init()
     {
-        Random.seed = (int)System.DateTime.Now.Ticks;
+        int seed = (int)System.DateTime.Now.Ticks;
+        Random.seed = seed;
+        Stats.getInstance().Seed = seed;
+
         parent = new GameObject("World");
 
         worldInstance = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -103,11 +114,11 @@ public class World : MonoBehaviour
     private void colocateCamera()
     {
         Vector3 cubeSize = worldInstance.GetComponent<Renderer>().bounds.size;
-        float posX = ((m_size/2f) * cubeSize.x) - cubeSize.x/2f;
-        float posY = ((m_size / 2f) * cubeSize.y) - cubeSize.y/2f;
+        float posX = ((m_size / 2f) * cubeSize.y) - cubeSize.y / 2f;
+        float posY = ((m_size / 2f) * cubeSize.y) - cubeSize.y*2;
 
         Camera.main.transform.position = new Vector3(posX, posY, -10);
-        Camera.main.orthographicSize = m_size / 2 + 1;
+        Camera.main.orthographicSize = m_size * 0.7f;
     }
 
     private void instantiateSnake()
@@ -115,12 +126,12 @@ public class World : MonoBehaviour
         GameObject go = Instantiate(m_snake) as GameObject;
         m_snakeInstance = go.GetComponent<Snake>();
         m_snakeInstance.worldSize = m_size;
-        m_snakeInstance.m_event += instantiatePrice;
-        m_snakeInstance.m_gameOver += showPuntuaction;
+        m_snakeInstance.m_event += priceEated;
+        m_snakeInstance.m_gameOver += gameOver;
         m_snakeInstance.init();
 
         IA m_ia = go.GetComponent<IA>();
-        m_ia.m_size = m_size;
+        m_ia.m_worldSize = m_size;
     }
 
     public void instantiatePrice()
@@ -156,19 +167,26 @@ public class World : MonoBehaviour
 
     public void priceEated()
     {
+        Stats.getInstance().increasePuntuaction();
         instantiatePrice();
     }
 
-    private void showPuntuaction(int puntuaction)
+    private void gameOver(int puntuaction)
     {
-        string message = "Total puntuaction => " + puntuaction + "\n From a maximun puntuaction of => " + ((m_size - 1) * (m_size - 1)).ToString();
-        m_text.text = message;
-        m_canvas.SetActive(true);
+        Stats.getInstance().endGame();
+        if(autoStart)
+        {
+            StartCoroutine(restartGame(restartWait));
+        }
+
     }
 
-    public void restartLevel()
+    private IEnumerator restartGame(float wait)
     {
-        SceneManager.LoadScene("game");
+        yield return new WaitForSeconds(wait);
+        SceneManager.LoadScene("game");//there is no problem for reload the scene because the stats are singleton
+
     }
+
 
 }

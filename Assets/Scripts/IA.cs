@@ -4,17 +4,19 @@ using System.Collections.Generic;
 
 public class IA : MonoBehaviour {
 
-    public int m_size;
+    public int m_worldSize;
     public Snake m_snake;
 
     public float weightObjective;
-    public float weightFutureDead;
+    public float weightFutureDeadNotSorted;
+    public float weightFutureDeadSorted;
 
     public Snake.Destinies getMovement()
     {
         float[] puntuaction = new float[4];//NORTH, WEST, SOUTH, EAST
         puntuaction = closeToObjective(puntuaction, weightObjective);//if we do this movement, we are more close to the objective
-        puntuaction = futureDead(puntuaction, weightFutureDead);
+        puntuaction = futureDeadNotSort(puntuaction, weightFutureDeadNotSorted);
+        puntuaction = futureDeadSort(puntuaction, weightFutureDeadSorted);
 
         puntuaction = closeToAutoEat(puntuaction);
         puntuaction = closeToDeadByWall(puntuaction);
@@ -123,7 +125,37 @@ public class IA : MonoBehaviour {
 
         return puntuaction;
     }
-    private float[] futureDead(float[] puntuaction, float weight)
+    private float[] futureDeadNotSort(float[] puntuaction, float weight)
+    {
+        Vector3 size = m_snake.getSize();
+        Vector3 head = m_snake.getBody()[0].transform.position;
+
+        Vector3 north = head + new Vector3(0, 1, 0) * size.y;
+        Vector3 east = head + new Vector3(1, 0, 0) * size.x;
+        Vector3 south = head + new Vector3(0, -1, 0) * size.y;
+        Vector3 west = head + new Vector3(-1, 0, 0) * size.x;
+
+        List<Vector3> body = new List<Vector3>();
+        List<GameObject> listGo = m_snake.getBody();
+
+        for (int i = 0; i < listGo.Count - 1; i++)
+        {
+            body.Add(listGo[i].transform.position);
+        }
+
+        int puntNorth = getArea(north, body, size);
+        int puntSouth = getArea(south, body, size);
+        int puntEast = getArea(east, body, size);
+        int puntWest = getArea(west, body, size);
+
+        puntuaction[0] += puntNorth * weight;
+        puntuaction[1] += puntEast * weight;
+        puntuaction[2] += puntSouth * weight;
+        puntuaction[3] += puntWest * weight;
+
+        return puntuaction;
+    }
+    private float[] futureDeadSort(float[] puntuaction, float weight)
     {
         Vector3 size = m_snake.getSize();
         Vector3 head = m_snake.getBody()[0].transform.position;
@@ -146,22 +178,36 @@ public class IA : MonoBehaviour {
         int puntEast = getArea(east, body, size);
         int puntWest = getArea(west, body, size);
 
-        puntuaction[0] += puntNorth * weight;
-        puntuaction[1] += puntEast * weight;
-        puntuaction[2] += puntSouth * weight;
-        puntuaction[3] += puntWest * weight;
+        List<Vector2> list = new List<Vector2>();
+        list.Add(new Vector2(0,puntNorth));
+        list.Add(new Vector2(1, puntEast));
+        list.Add(new Vector2(2, puntSouth));
+        list.Add(new Vector2(3, puntWest));
+
+        list.Sort(delegate (Vector2 p1, Vector2 p2) {
+            if (p1.y == p2.y) return 0;
+            if (p1.y < p2.y) return -1;
+            return 1;
+        });
+        //here the list is sorted
+
+        for(int i = 0; i < list.Count; i++)
+        {
+            puntuaction[(int)(list[i].x)] += i * weight;
+        }
 
         return puntuaction;
     }
+
     private int getArea(Vector3 origin, List<Vector3> body, Vector3 size)
     {
         List<Vector3> listAnalyzed = new List<Vector3>();
         List<Vector3> listToAnalyze = new List<Vector3>() { origin };
 
         Vector3 bottomLeft = Vector3.zero;
-        Vector3 topRight = new Vector3(size.x * m_size, size.y * m_size, 0);
+        Vector3 topRight = new Vector3(size.x * m_worldSize, size.y * m_worldSize, 0);
         // take care for borders
-        while (listToAnalyze.Count != 0)
+        while (listToAnalyze.Count != 0 && listAnalyzed.Count < body.Count)
         {
             Vector3 actual = listToAnalyze[0];
             listToAnalyze.RemoveAt(0);
@@ -206,7 +252,7 @@ public class IA : MonoBehaviour {
     {
         Vector3 size = m_snake.getSize();
         Vector3 bottomLeft = Vector3.zero;
-        Vector3 topRight = new Vector3(size.x * (m_size - 1), size.y * (m_size - 1), 0);
+        Vector3 topRight = new Vector3(size.x * (m_worldSize - 1), size.y * (m_worldSize - 1), 0);
 
         if (pos.y == topRight.y)
         {
