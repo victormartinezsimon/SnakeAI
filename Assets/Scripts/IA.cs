@@ -11,6 +11,9 @@ public class IA : MonoBehaviour {
     public float weightFutureDeadNotSorted;
     public float weightFutureDeadSorted;
 
+    public float m_percentDiferencesAreas = 0.3f; // we will use area 1 if area2 / area1 < 0.3f
+
+
     public Snake.Destinies getMovement()
     {
         float[] puntuaction = new float[4];//NORTH, WEST, SOUTH, EAST
@@ -125,6 +128,7 @@ public class IA : MonoBehaviour {
 
         return puntuaction;
     }
+
     private float[] futureDeadNotSort(float[] puntuaction, float weight)
     {
         Vector3 size = m_snake.getSize();
@@ -201,6 +205,24 @@ public class IA : MonoBehaviour {
 
     private int getArea(Vector3 origin, List<Vector3> body, Vector3 size)
     {
+        int areaBorder1 = getAreaWithBorderSize(origin, body, size, 1);
+        int areaBorder2 = getAreaWithBorderSize(origin, body, size, 2);
+
+        float percent = areaBorder1 * m_percentDiferencesAreas;
+
+        if(areaBorder2 > (int)percent)
+        {
+            return areaBorder1;
+        }
+        else
+        {
+            return areaBorder2;
+        }
+
+    }
+
+    private int getAreaWithBorderSize(Vector3 origin, List<Vector3> body, Vector3 size, int borderSize)
+    {
         List<Vector3> listAnalyzed = new List<Vector3>();
         List<Vector3> listToAnalyze = new List<Vector3>() { origin };
 
@@ -221,52 +243,57 @@ public class IA : MonoBehaviour {
                 Vector3 south = actual + new Vector3(0, -1, 0) * size.y;
                 Vector3 west = actual + new Vector3(-1, 0, 0) * size.x;
 
+                if(borderSize != 1 && isBorder(m_snake.pricePosition,2))
+                {
+                    borderSize = 1;//if the price is in the fake border, we put the border as 1
+                }
+                
                 //north
-                if (north.y < topRight.y && !listAnalyzed.Contains(north) && !listToAnalyze.Contains(north) && !body.Contains(north) && !isBorder(north))
+                if (north.y < topRight.y && !listAnalyzed.Contains(north) && !listToAnalyze.Contains(north) && !body.Contains(north) && !isBorder(north, borderSize))
                 {
                     listToAnalyze.Add(north);
                 }
                 //south
-                if (south.y > bottomLeft.y && !listAnalyzed.Contains(south) && !listToAnalyze.Contains(south) && !body.Contains(south) && !isBorder(south))
+                if (south.y > bottomLeft.y && !listAnalyzed.Contains(south) && !listToAnalyze.Contains(south) && !body.Contains(south) && !isBorder(south, borderSize))
                 {
                     listToAnalyze.Add(south);
                 }
                 //east
-                if (east.x < topRight.x && !listAnalyzed.Contains(east) && !listToAnalyze.Contains(east) && !body.Contains(east) && !isBorder(east))
+                if (east.x < topRight.x && !listAnalyzed.Contains(east) && !listToAnalyze.Contains(east) && !body.Contains(east) && !isBorder(east, borderSize))
                 {
                     listToAnalyze.Add(east);
                 }
                 //west
-                if (west.x > bottomLeft.x && !listAnalyzed.Contains(west) && !listToAnalyze.Contains(west) && !body.Contains(west) && !isBorder(west))
+                if (west.x > bottomLeft.x && !listAnalyzed.Contains(west) && !listToAnalyze.Contains(west) && !body.Contains(west) && !isBorder(west, borderSize))
                 {
                     listToAnalyze.Add(west);
                 }
             }
-           
+
         }
-        
+
         return listAnalyzed.Count - 1;//we add the first one, so we delete it
     }
 
-    private bool isBorder(Vector3 pos)
+    private bool isBorder(Vector3 pos, int borderSize = 1)
     {
         Vector3 size = m_snake.getSize();
-        Vector3 bottomLeft = Vector3.zero;
-        Vector3 topRight = new Vector3(size.x * (m_worldSize - 1), size.y * (m_worldSize - 1), 0);
+        Vector3 bottomLeft = new Vector3(size.x * (borderSize - 1), size.y * (borderSize - 1), 0);
+        Vector3 topRight = new Vector3(size.x * (m_worldSize - borderSize), size.y * (m_worldSize - borderSize), 0);
 
-        if (pos.y == topRight.y)
+        if (pos.y >= topRight.y)
         {
             return true;
         }
-        if (pos.x == topRight.x)
+        if (pos.x >= topRight.x)
         {
             return true;
         }
-        if (pos.y == bottomLeft.y)
+        if (pos.y <= bottomLeft.y)
         {
             return true;
         }
-        if (pos.x == bottomLeft.x)
+        if (pos.x <= bottomLeft.x)
         {
             return true;
         }

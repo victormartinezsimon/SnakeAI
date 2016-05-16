@@ -44,13 +44,14 @@ public class Snake : MonoBehaviour {
         increaseBody(posX, posY, cube);
 
         m_ia = GetComponent<IA>();
+        InvokeRepeating("Tick", 0, 0.05f);
     }
-
+    /*
     void Update()
     {
         Tick();
     }
-    
+    */
     public void Tick()
     {
         if (dead) { return; }
